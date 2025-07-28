@@ -17,6 +17,18 @@ type UserRegisteredEvent struct {
 	Email    string `json:"email"`
 }
 
+func init() {
+	shared.RegisterEventType(UserRegisteredEventType, func() shared.Event {
+		return &UserRegisteredEvent{}
+	})
+	shared.RegisterEventType(UserUpdatedEventType, func() shared.Event {
+		return &UserUpdatedEvent{}
+	})
+	shared.RegisterEventType(UserDeletedEventType, func() shared.Event {
+		return &UserDeletedEvent{}
+	})
+}
+
 func (e UserRegisteredEvent) GetPayload() interface{} {
 	return struct {
 		UserID   string `json:"user_id"`

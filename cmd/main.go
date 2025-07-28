@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"event-driven-go/internal/config"
 	"fmt"
 	"log"
 	"os"
@@ -20,6 +21,8 @@ import (
 )
 
 func main() {
+	config.Load()
+
 	logger := log.New(os.Stdout, "[MOVIES-GO] ", log.LstdFlags|log.Lshortfile)
 
 	logger.Println("Starting ...")
@@ -48,19 +51,19 @@ func main() {
 		logger.Fatalf("❌️  Warning: Failed to create MongoDB indexes: %v", err)
 	}
 
-	eventBus := shared.NewEventBus(logger)
-	userService := user.NewService(userRepo, eventBus)
-	setupEventHandlers(eventBus, logger)
-
 	logger.Println("✅ App setup finished.")
+
+	eventBus := shared.NewEventBus(logger)
+	setupConsumers(context.Background(), logger)
+	userService := user.NewService(userRepo, eventBus)
 
 	demonstrateGormFeatures(userService, watchlistRepo, libraryRepo, ratingRepo, movieRepo, logger)
 
+	// Keep the application running until terminated
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	sig := <-sigChan
-	logger.Printf("Received signal %v, shutting down...", sig)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+	logger.Println("Shutting down application...")
 }
 
 func runMigrations(
@@ -88,22 +91,25 @@ func runMigrations(
 	return nil
 }
 
-func setupEventHandlers(eventBus *shared.EventBus, logger *log.Logger) {
-	// Create domain-specific handlers
+func setupConsumers(ctx context.Context, logger *log.Logger) {
+
 	userHandler := user.NewHandler(logger)
 	watchlistHandler := watchlist.NewHandler(logger)
 	libraryHandler := library.NewHandler(logger)
 	ratingHandler := rating.NewHandler(logger)
 
-	// Subscribe handlers to their respective events
-	eventBus.Subscribe(user.UserRegisteredEventType, userHandler)
-	eventBus.Subscribe(user.UserUpdatedEventType, userHandler)
-	eventBus.Subscribe(user.UserDeletedEventType, userHandler)
+	// Map topics to handlers
+	handlers := map[string]shared.EventHandler{
+		user.UserRegisteredEventType:             userHandler,
+		user.UserUpdatedEventType:                userHandler,
+		user.UserDeletedEventType:                userHandler,
+		watchlist.MovieAddedToWatchlistEventType: watchlistHandler,
+		library.MovieWatchedEventType:            libraryHandler,
+		rating.MovieRatedEventType:               ratingHandler,
+		rating.MovieUnratedEventType:             ratingHandler,
+	}
 
-	eventBus.Subscribe(watchlist.MovieAddedToWatchlistEventType, watchlistHandler)
-	eventBus.Subscribe(library.MovieWatchedEventType, libraryHandler)
-	eventBus.Subscribe(rating.MovieRatedEventType, ratingHandler)
-	eventBus.Subscribe(rating.MovieUnratedEventType, ratingHandler)
+	go shared.StartConsumers(ctx, handlers)
 }
 
 func demonstrateGormFeatures(
@@ -120,14 +126,14 @@ func demonstrateGormFeatures(
 	logger.Println("==================================")
 
 	// Create sample users
-	user1, err := userService.RegisterUser(ctx, "moviefan123", "fan@movies.com")
+	user1, err := userService.RegisterUser(ctx, "movieew32we21111313", "f1anfe32ffwe1s11fsd@1movies.com")
 	if err != nil {
 		logger.Printf("❌ Failed to register user 1: %v", err)
 		return
 	}
 	logger.Printf("✅ Registered user: %s (%s)", user1.Username, user1.Email)
 
-	user2, err := userService.RegisterUser(ctx, "cinephile", "cinephile@example.com")
+	user2, err := userService.RegisterUser(ctx, "cinephile", "cinephile2@example.com")
 	if err != nil {
 		logger.Printf("❌ Failed to register user 2: %v", err)
 		return

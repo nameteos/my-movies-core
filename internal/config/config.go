@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/IBM/sarama"
 	"github.com/joho/godotenv"
 	"log"
 	"os"
@@ -12,9 +13,7 @@ import (
 	"time"
 )
 
-// Config holds all configuration for the application
 type Config struct {
-	// PostgreSQL configuration
 	PostgresHost     string `env:"POSTGRES_HOST" default:"localhost"`
 	PostgresPort     int    `env:"POSTGRES_PORT" default:"5432"`
 	PostgresUser     string `env:"POSTGRES_USER" default:"movieapp"`
@@ -22,20 +21,21 @@ type Config struct {
 	PostgresDB       string `env:"POSTGRES_DB" default:"movieapp"`
 	PostgresSSLMode  string `env:"POSTGRES_SSLMODE" default:"disable"`
 
-	// MongoDB configuration
 	MongoURI      string `env:"MONGODB_URI" default:"mongodb://localhost:27017"`
 	MongoDatabase string `env:"MONGODB_DATABASE" default:"movieapp"`
 
-	// Application configuration can be added here
 	Environment string `env:"APP_ENV" default:"development"`
 	LogLevel    string `env:"LOG_LEVEL" default:"info"`
+
+	KafkaBootstrapServers string `env:"KAFKA_BOOTSTRAP_SERVERS" default:"localhost:9092"`
 }
 
 // Load loads configuration from environment variables and .env file
 func Load() (*Config, error) {
+	// Try to load .env file, but continue if it doesn't exist
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("Warning: Error loading .env file, using environment variables and defaults")
 	}
 
 	config := &Config{}
@@ -46,7 +46,6 @@ func Load() (*Config, error) {
 	return config, nil
 }
 
-// parseEnv parses environment variables into the config struct using reflection
 func parseEnv(config interface{}) error {
 	configValue := reflect.ValueOf(config)
 	if configValue.Kind() != reflect.Ptr {
@@ -168,7 +167,6 @@ func setField(field reflect.Value, value string) error {
 	return nil
 }
 
-// GetDatabaseConfig returns database configuration in the format expected by the shared package
 func (c *Config) GetDatabaseConfig() DatabaseConfig {
 	return DatabaseConfig{
 		PostgreSQL: PostgreSQLConfig{
@@ -184,6 +182,16 @@ func (c *Config) GetDatabaseConfig() DatabaseConfig {
 			Database: c.MongoDatabase,
 		},
 	}
+}
+
+func (c *Config) GetSeranaConfig() *sarama.Config {
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.Retry.Max = 5
+	config.Consumer.Return.Errors = true
+
+	return config
 }
 
 type DatabaseConfig struct {

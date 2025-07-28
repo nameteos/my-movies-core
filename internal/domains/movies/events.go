@@ -20,6 +20,18 @@ type MovieCreatedEvent struct {
 	Description string   `json:"description"`
 }
 
+func init() {
+	shared.RegisterEventType(MovieCreatedEventType, func() shared.Event {
+		return &MovieCreatedEvent{}
+	})
+	shared.RegisterEventType(MovieUpdatedEventType, func() shared.Event {
+		return &MovieUpdatedEvent{}
+	})
+	shared.RegisterEventType(MovieDeletedEventType, func() shared.Event {
+		return &MovieDeletedEvent{}
+	})
+}
+
 func (e MovieCreatedEvent) GetPayload() interface{} {
 	return struct {
 		MovieID     string   `json:"movie_id"`

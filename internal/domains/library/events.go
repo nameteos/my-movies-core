@@ -20,6 +20,12 @@ type MovieWatchedEvent struct {
 	Duration  int       `json:"duration_minutes,omitempty"`
 }
 
+func init() {
+	shared.RegisterEventType(MovieWatchedEventType, func() shared.Event {
+		return &MovieWatchedEvent{}
+	})
+}
+
 func (e MovieWatchedEvent) GetPayload() interface{} {
 	return struct {
 		UserID    string    `json:"user_id"`

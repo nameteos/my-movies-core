@@ -18,6 +18,15 @@ type MovieRatedEvent struct {
 	Review  string  `json:"review,omitempty"`
 }
 
+func init() {
+	shared.RegisterEventType(MovieRatedEventType, func() shared.Event {
+		return &MovieRatedEvent{}
+	})
+	shared.RegisterEventType(MovieUnratedEventType, func() shared.Event {
+		return &MovieUnratedEvent{}
+	})
+}
+
 func (e MovieRatedEvent) GetPayload() interface{} {
 	return struct {
 		UserID  string  `json:"user_id"`
