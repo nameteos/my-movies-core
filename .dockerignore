@@ -1,0 +1,16 @@
+.env
+
+.git
+.gitignore
+
+main
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+.idea/
+.vscode/
+*.swp
+*.swo
