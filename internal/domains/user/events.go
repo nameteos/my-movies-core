@@ -18,15 +18,9 @@ type UserRegisteredEvent struct {
 }
 
 func init() {
-	shared.RegisterEventType(UserRegisteredEventType, func() shared.Event {
-		return &UserRegisteredEvent{}
-	})
-	shared.RegisterEventType(UserUpdatedEventType, func() shared.Event {
-		return &UserUpdatedEvent{}
-	})
-	shared.RegisterEventType(UserDeletedEventType, func() shared.Event {
-		return &UserDeletedEvent{}
-	})
+	shared.GlobalEventBus.RegisterEventType(UserRegisteredEventType, &UserRegisteredEvent{}, &Handler{})
+	shared.GlobalEventBus.RegisterEventType(UserUpdatedEventType, &UserUpdatedEvent{}, &Handler{})
+	shared.GlobalEventBus.RegisterEventType(UserDeletedEventType, &UserDeletedEvent{}, &Handler{})
 }
 
 func (e UserRegisteredEvent) GetPayload() interface{} {

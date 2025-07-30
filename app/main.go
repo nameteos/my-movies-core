@@ -53,10 +53,10 @@ func main() {
 
 	logger.Println("✅ App setup finished.")
 
-	eventBus := shared.NewEventBus(logger)
-	setupConsumers(context.Background(), logger)
-	userService := user.NewService(userRepo, eventBus)
+	eventBus := shared.NewEventBus()
+	go shared.GlobalEventBus.StartConsumers(context.Background())
 
+	userService := user.NewService(userRepo, eventBus)
 	demonstrateGormFeatures(userService, watchlistRepo, libraryRepo, ratingRepo, movieRepo, logger)
 
 	// Keep the application running until terminated
@@ -89,27 +89,6 @@ func runMigrations(
 	}
 
 	return nil
-}
-
-func setupConsumers(ctx context.Context, logger *log.Logger) {
-
-	userHandler := user.NewHandler(logger)
-	watchlistHandler := watchlist.NewHandler(logger)
-	libraryHandler := library.NewHandler(logger)
-	ratingHandler := rating.NewHandler(logger)
-
-	// Map topics to handlers
-	handlers := map[string]shared.EventHandler{
-		user.UserRegisteredEventType:             userHandler,
-		user.UserUpdatedEventType:                userHandler,
-		user.UserDeletedEventType:                userHandler,
-		watchlist.MovieAddedToWatchlistEventType: watchlistHandler,
-		library.MovieWatchedEventType:            libraryHandler,
-		rating.MovieRatedEventType:               ratingHandler,
-		rating.MovieUnratedEventType:             ratingHandler,
-	}
-
-	go shared.StartConsumers(ctx, handlers)
 }
 
 func demonstrateGormFeatures(

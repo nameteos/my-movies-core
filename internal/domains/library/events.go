@@ -21,9 +21,7 @@ type MovieWatchedEvent struct {
 }
 
 func init() {
-	shared.RegisterEventType(MovieWatchedEventType, func() shared.Event {
-		return &MovieWatchedEvent{}
-	})
+	shared.GlobalEventBus.RegisterEventType(MovieWatchedEventType, &MovieWatchedEvent{}, &Handler{})
 }
 
 func (e MovieWatchedEvent) GetPayload() interface{} {

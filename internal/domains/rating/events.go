@@ -19,12 +19,8 @@ type MovieRatedEvent struct {
 }
 
 func init() {
-	shared.RegisterEventType(MovieRatedEventType, func() shared.Event {
-		return &MovieRatedEvent{}
-	})
-	shared.RegisterEventType(MovieUnratedEventType, func() shared.Event {
-		return &MovieUnratedEvent{}
-	})
+	shared.GlobalEventBus.RegisterEventType(MovieRatedEventType, &MovieRatedEvent{}, &Handler{})
+	shared.GlobalEventBus.RegisterEventType(MovieUnratedEventType, &MovieUnratedEvent{}, &Handler{})
 }
 
 func (e MovieRatedEvent) GetPayload() interface{} {

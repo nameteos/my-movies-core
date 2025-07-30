@@ -8,13 +8,7 @@ import (
 	"event-driven-go/internal/shared"
 )
 
-type Handler struct {
-	logger *log.Logger
-}
-
-func NewHandler(logger *log.Logger) *Handler {
-	return &Handler{logger: logger}
-}
+type Handler struct{}
 
 func (h *Handler) Handle(ctx context.Context, event shared.Event) error {
 	switch e := event.(type) {
@@ -37,22 +31,22 @@ func (h *Handler) handleMovieRated(ctx context.Context, event *MovieRatedEvent) 
 		reviewText = fmt.Sprintf(" with review: \"%s\"", event.Review)
 	}
 
-	h.logger.Printf("⭐ RATING: User %s rated '%s' %.1f/5%s",
+	log.Printf("⭐ RATING: User %s rated '%s' %.1f/5%s",
 		event.UserID, event.Title, event.Rating, reviewText)
 
 	// todo service
 
-	h.logger.Printf("✅ RATING: Successfully processed rating event %s", event.GetID())
+	log.Printf("✅ RATING: Successfully processed rating event %s", event.GetID())
 	return nil
 }
 
 // handleMovieUnrated processes MovieUnratedEvent
 func (h *Handler) handleMovieUnrated(ctx context.Context, event *MovieUnratedEvent) error {
-	h.logger.Printf("❌ RATING: User %s removed rating for '%s'",
+	log.Printf("❌ RATING: User %s removed rating for '%s'",
 		event.UserID, event.Title)
 
 	// todo service
 
-	h.logger.Printf("✅ RATING: Successfully processed unrating event %s", event.GetID())
+	log.Printf("✅ RATING: Successfully processed unrating event %s", event.GetID())
 	return nil
 }

@@ -17,7 +17,7 @@ go mod tidy
 
 3. Run the application locally:
 ```bash
-go run cmd/main.go
+go run app/main.go
 ```
 
 ## Docker Development Setup

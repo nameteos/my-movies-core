@@ -21,15 +21,9 @@ type MovieCreatedEvent struct {
 }
 
 func init() {
-	shared.RegisterEventType(MovieCreatedEventType, func() shared.Event {
-		return &MovieCreatedEvent{}
-	})
-	shared.RegisterEventType(MovieUpdatedEventType, func() shared.Event {
-		return &MovieUpdatedEvent{}
-	})
-	shared.RegisterEventType(MovieDeletedEventType, func() shared.Event {
-		return &MovieDeletedEvent{}
-	})
+	shared.GlobalEventBus.RegisterEventType(MovieCreatedEventType, &MovieCreatedEvent{}, &Handler{})
+	shared.GlobalEventBus.RegisterEventType(MovieUpdatedEventType, &MovieUpdatedEvent{}, &Handler{})
+	shared.GlobalEventBus.RegisterEventType(MovieDeletedEventType, &MovieDeletedEvent{}, &Handler{})
 }
 
 func (e MovieCreatedEvent) GetPayload() interface{} {

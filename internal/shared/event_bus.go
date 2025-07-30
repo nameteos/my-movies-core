@@ -9,18 +9,28 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/google/uuid"
 )
 
+var GlobalEventBus *EventBus
+
+func init() {
+	GlobalEventBus = NewEventBus()
+}
+
 type Event interface {
 	GetID() string
 	GetType() string
 	GetTimestamp() time.Time
 	GetPayload() interface{}
+}
+
+type EventHandler interface {
+	Handle(ctx context.Context, event Event) error
+	CanHandle(eventType string) bool
 }
 
 type BaseEvent struct {
@@ -41,33 +51,30 @@ func (e BaseEvent) GetTimestamp() time.Time {
 	return e.Timestamp
 }
 
-type EventHandler interface {
-	Handle(ctx context.Context, event Event) error
-	CanHandle(eventType string) bool
-}
-
 type EventBus struct {
-	handlers map[string][]EventHandler
-	mutex    sync.RWMutex
-	logger   *log.Logger
+	eventRegistry map[string]EventRegistration
 }
 
-//func (eb *EventBus) Subscribe(eventType string, handler EventHandler) {
-//	eb.mutex.Lock()
-//	defer eb.mutex.Unlock()
-//
-//	eb.handlers[eventType] = append(eb.handlers[eventType], handler)
-//	eb.logger.Printf("Subscribed handler for event type: %s", eventType)
-//}
+type EventRegistration struct {
+	eventHandler EventHandler
+	event        Event
+}
+
+func (eb EventBus) RegisterEventType(eventType string, event Event, handler EventHandler) {
+	eb.eventRegistry[eventType] = EventRegistration{
+		handler,
+		event,
+	}
+}
 
 func (eb *EventBus) Publish(ctx context.Context, event Event) error {
-	eb.logger.Printf("Publishing event: %s (ID: %s)", event.GetType(), event.GetID())
+	log.Printf("Publishing event: %s (ID: %s)", event.GetType(), event.GetID())
 
 	payloadInBytes, err := json.Marshal(event.GetPayload())
 	if err != nil {
 		return err
 	}
-	err = pushMessageToQueue(event.GetType(), payloadInBytes)
+	err = eb.pushMessageToQueue(event.GetType(), payloadInBytes)
 	if err != nil {
 		return err
 	}
@@ -83,14 +90,13 @@ func NewBaseEvent(eventType string) BaseEvent {
 	}
 }
 
-func NewEventBus(logger *log.Logger) *EventBus {
+func NewEventBus() *EventBus {
 	return &EventBus{
-		handlers: make(map[string][]EventHandler),
-		logger:   logger,
+		eventRegistry: make(map[string]EventRegistration),
 	}
 }
 
-func connectProducer() (sarama.SyncProducer, error) {
+func (eb EventBus) connectProducer() (sarama.SyncProducer, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
@@ -100,9 +106,8 @@ func connectProducer() (sarama.SyncProducer, error) {
 	return sarama.NewSyncProducer([]string{cfg.KafkaBootstrapServers}, cfg.GetSeranaConfig())
 }
 
-func pushMessageToQueue(topic string, message []byte) error {
-
-	producer, err := connectProducer()
+func (eb EventBus) pushMessageToQueue(topic string, message []byte) error {
+	producer, err := eb.connectProducer()
 	if err != nil {
 		return err
 	}
@@ -122,7 +127,7 @@ func pushMessageToQueue(topic string, message []byte) error {
 	return nil
 }
 
-func ConnectConsumer() (sarama.Consumer, error) {
+func (eb EventBus) connectConsumer() (sarama.Consumer, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
@@ -131,15 +136,15 @@ func ConnectConsumer() (sarama.Consumer, error) {
 	return sarama.NewConsumer([]string{cfg.KafkaBootstrapServers}, cfg.GetSeranaConfig())
 }
 
-func StartConsumers(ctx context.Context, handlers map[string]EventHandler) {
+func (eb EventBus) StartConsumers(ctx context.Context) {
 	var consumers []sarama.PartitionConsumer
 	var workers []sarama.Consumer
 
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
-	for topic, handler := range handlers {
-		worker, err := ConnectConsumer()
+	for topic, registration := range eb.eventRegistry {
+		worker, err := eb.connectConsumer()
 		if err != nil {
 			panic(err)
 		}
@@ -159,19 +164,18 @@ func StartConsumers(ctx context.Context, handlers map[string]EventHandler) {
 				case err := <-consumer.Errors():
 					fmt.Printf("Error consuming message: %v\n", err)
 				case msg := <-consumer.Messages():
-					concreteEvent, err := CreateEventFromType(topic)
 					if err != nil {
 						fmt.Printf("Error creating event: %v\n", err)
 						continue
 					}
 
-					if err := json.Unmarshal(msg.Value, &concreteEvent); err != nil {
+					if err := json.Unmarshal(msg.Value, &registration.event); err != nil {
 						fmt.Printf("Error unmarshaling event: %v\n", err)
 						continue
 					}
 
 					if handler.CanHandle(topic) {
-						err := handler.Handle(ctx, concreteEvent)
+						err := handler.Handle(ctx, registration.event)
 						if err != nil {
 							fmt.Printf("Error handling message: %v\n", err)
 							continue
@@ -179,13 +183,11 @@ func StartConsumers(ctx context.Context, handlers map[string]EventHandler) {
 					}
 				}
 			}
-		}(topic, handler, consumer)
+		}(topic, registration.eventHandler, consumer)
 	}
 
-	// Wait for termination signal
 	<-sigchan
 
-	// Clean up all consumers
 	for _, consumer := range consumers {
 		if err := consumer.Close(); err != nil {
 			fmt.Printf("Error closing consumer: %v\n", err)
@@ -197,20 +199,4 @@ func StartConsumers(ctx context.Context, handlers map[string]EventHandler) {
 			fmt.Printf("Error closing worker: %v\n", err)
 		}
 	}
-}
-
-type EventFactory func() Event
-
-var eventRegistry = make(map[string]EventFactory)
-
-func RegisterEventType(eventType string, factory EventFactory) {
-	eventRegistry[eventType] = factory
-}
-
-func CreateEventFromType(eventType string) (Event, error) {
-	factory, exists := eventRegistry[eventType]
-	if !exists {
-		return nil, fmt.Errorf("no factory registered for event type: %s", eventType)
-	}
-	return factory(), nil
 }

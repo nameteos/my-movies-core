@@ -7,13 +7,7 @@ import (
 	"log"
 )
 
-type Handler struct {
-	logger *log.Logger
-}
-
-func NewHandler(logger *log.Logger) *Handler {
-	return &Handler{logger: logger}
-}
+type Handler struct{}
 
 func (h *Handler) Handle(ctx context.Context, event shared.Event) error {
 	switch e := event.(type) {
@@ -29,11 +23,11 @@ func (h *Handler) CanHandle(eventType string) bool {
 }
 
 func (h *Handler) handleMovieAddedToWatchlist(ctx context.Context, event *MovieAddedToWatchlistEvent) error {
-	h.logger.Printf("🎬 WATCHLIST: User %s added '%s' (%d, %s) to watchlist",
+	log.Printf("🎬 WATCHLIST: User %s added '%s' (%d, %s) to watchlist",
 		event.UserID, event.Title, event.Year, event.Genre)
 
 	// todo handle with service
 
-	h.logger.Printf("✅ WATCHLIST: Successfully processed event %s", event.GetID())
+	log.Printf("✅ WATCHLIST: Successfully processed event %s", event.GetID())
 	return nil
 }

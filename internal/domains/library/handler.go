@@ -8,13 +8,7 @@ import (
 	"event-driven-go/internal/shared"
 )
 
-type Handler struct {
-	logger *log.Logger
-}
-
-func NewHandler(logger *log.Logger) *Handler {
-	return &Handler{logger: logger}
-}
+type Handler struct{}
 
 func (h *Handler) Handle(ctx context.Context, event shared.Event) error {
 	switch e := event.(type) {
@@ -35,7 +29,7 @@ func (h *Handler) handleMovieWatched(ctx context.Context, event *MovieWatchedEve
 		durationText = fmt.Sprintf(" (Duration: %d min)", event.Duration)
 	}
 
-	h.logger.Printf("📚 LIBRARY: User %s watched '%s' at %s%s",
+	log.Printf("📚 LIBRARY: User %s watched '%s' at %s%s",
 		event.UserID, event.Title, event.WatchedAt.Format("2006-01-02 15:04:05"), durationText)
 
 	// todo store move in DB, do other stuff

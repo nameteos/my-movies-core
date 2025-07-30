@@ -6,6 +6,10 @@ const (
 	MovieAddedToWatchlistEventType = "watchlist.movie_added"
 )
 
+func init() {
+	shared.GlobalEventBus.RegisterEventType(MovieAddedToWatchlistEventType, &MovieAddedToWatchlistEvent{}, &Handler{})
+}
+
 type MovieAddedToWatchlistEvent struct {
 	shared.BaseEvent
 	UserID  string `json:"user_id"`

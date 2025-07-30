@@ -8,13 +8,7 @@ import (
 	"event-driven-go/internal/shared"
 )
 
-type Handler struct {
-	logger *log.Logger
-}
-
-func NewHandler(logger *log.Logger) *Handler {
-	return &Handler{logger}
-}
+type Handler struct{}
 
 func (h *Handler) Handle(ctx context.Context, event shared.Event) error {
 	switch e := event.(type) {
@@ -36,7 +30,7 @@ func (h *Handler) CanHandle(eventType string) bool {
 }
 
 func (h *Handler) handleMovieCreated(ctx context.Context, event *MovieCreatedEvent) error {
-	h.logger.Printf("🎬 MOVIES: New movie '%s' (%d) added to catalog",
+	log.Printf("🎬 MOVIES: New movie '%s' (%d) added to catalog",
 		event.Title, event.Year)
 
 	// todo index movie
@@ -46,13 +40,13 @@ func (h *Handler) handleMovieCreated(ctx context.Context, event *MovieCreatedEve
 
 // handleMovieUpdated processes MovieUpdatedEvent
 func (h *Handler) handleMovieUpdated(ctx context.Context, event *MovieUpdatedEvent) error {
-	h.logger.Printf("🎬 MOVIES: Movie '%s' has been updated", event.Title)
+	log.Printf("🎬 MOVIES: Movie '%s' has been updated", event.Title)
 
 	return nil
 }
 
 // handleMovieDeleted processes MovieDeletedEvent
 func (h *Handler) handleMovieDeleted(ctx context.Context, event *MovieDeletedEvent) error {
-	h.logger.Printf("🎬 MOVIES: Movie '%s' has been deleted from catalog", event.Title)
+	log.Printf("🎬 MOVIES: Movie '%s' has been deleted from catalog", event.Title)
 	return nil
 }
