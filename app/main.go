@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"event-driven-go/internal/config"
 	"fmt"
 	"log"
 	"os"
@@ -21,13 +20,11 @@ import (
 )
 
 func main() {
-	config.Load()
-
 	logger := log.New(os.Stdout, "[MOVIES-GO] ", log.LstdFlags|log.Lshortfile)
 
 	logger.Println("Starting ...")
 
-	dbConnections, err := shared.NewDatabaseConnections(shared.GetDatabaseConfig(), logger)
+	dbConnections, err := shared.NewDatabaseConnections()
 	if err != nil {
 		logger.Fatalf("❌ Failed to connect to databases: %v", err)
 	}
@@ -63,6 +60,8 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
+
+	eventBus.SyncProducer.Close()
 	logger.Println("Shutting down application...")
 }
 

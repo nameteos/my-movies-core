@@ -3,7 +3,6 @@ package shared
 import (
 	"context"
 	"encoding/json"
-	"event-driven-go/internal/config"
 	"fmt"
 	"github.com/IBM/sarama"
 	"log"
@@ -53,6 +52,8 @@ func (e BaseEvent) GetTimestamp() time.Time {
 
 type EventBus struct {
 	eventRegistry map[string]EventRegistration
+	SyncProducer  sarama.SyncProducer
+	Consumer      sarama.Consumer
 }
 
 type EventRegistration struct {
@@ -91,66 +92,43 @@ func NewBaseEvent(eventType string) BaseEvent {
 }
 
 func NewEventBus() *EventBus {
+	syncProducer, err := sarama.NewSyncProducer([]string{Config.Kafka.BootstrapServers}, Config.GetSaramaConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
+	consumer, err := sarama.NewConsumer([]string{Config.Kafka.BootstrapServers}, Config.GetSaramaConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &EventBus{
 		eventRegistry: make(map[string]EventRegistration),
+		SyncProducer:  syncProducer,
+		Consumer:      consumer,
 	}
-}
-
-func (eb EventBus) connectProducer() (sarama.SyncProducer, error) {
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Error loading configuration: %v", err)
-	}
-
-	log.Printf("loading producer config: %s", cfg.KafkaBootstrapServers)
-	return sarama.NewSyncProducer([]string{cfg.KafkaBootstrapServers}, cfg.GetSeranaConfig())
 }
 
 func (eb EventBus) pushMessageToQueue(topic string, message []byte) error {
-	producer, err := eb.connectProducer()
-	if err != nil {
-		return err
-	}
-	defer producer.Close()
-
 	producerMessage := &sarama.ProducerMessage{
 		Topic: topic,
 		Value: sarama.StringEncoder(message),
 	}
-	partition, offset, err := producer.SendMessage(producerMessage)
+	_, _, err := eb.SyncProducer.SendMessage(producerMessage)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Topic: %s, Partition: %d, Offset: %d\n", topic, partition, offset)
-
 	return nil
-}
-
-func (eb EventBus) connectConsumer() (sarama.Consumer, error) {
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Error loading configuration: %v", err)
-	}
-
-	return sarama.NewConsumer([]string{cfg.KafkaBootstrapServers}, cfg.GetSeranaConfig())
 }
 
 func (eb EventBus) StartConsumers(ctx context.Context) {
 	var consumers []sarama.PartitionConsumer
-	var workers []sarama.Consumer
 
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
 	for topic, registration := range eb.eventRegistry {
-		worker, err := eb.connectConsumer()
-		if err != nil {
-			panic(err)
-		}
-		workers = append(workers, worker)
-
-		consumer, err := worker.ConsumePartition(topic, 0, sarama.OffsetOldest)
+		consumer, err := eb.Consumer.ConsumePartition(topic, 0, sarama.OffsetOldest)
 		if err != nil {
 			panic(err)
 		}
@@ -194,9 +172,7 @@ func (eb EventBus) StartConsumers(ctx context.Context) {
 		}
 	}
 
-	for _, worker := range workers {
-		if err := worker.Close(); err != nil {
-			fmt.Printf("Error closing worker: %v\n", err)
-		}
+	if err := eb.Consumer.Close(); err != nil {
+		fmt.Printf("Error closing worker: %v\n", err)
 	}
 }
