@@ -15,48 +15,11 @@ cd my-movies-go
 go mod tidy
 ```
 
-3. Run the application locally:
+3. Run the application locally with hot reloading:
 ```bash
-go run app/main.go
+cp docker-compose.override.yml.dist docker-compose.override.yml
+docker-compose up -d
 ```
-
-## Docker Development Setup
-
-This project includes a development-friendly Docker setup that allows you to make code changes without rebuilding the Docker image.
-
-### Features
-
-- **Live Reloading**: The application automatically rebuilds and restarts when you make code changes
-- **Volume Mounting**: Your local codebase is mounted into the container, so changes are immediately available
-- **Development Tools**: The development container includes tools for debugging and development
-
-### Running with Docker
-
-1. Start the development environment:
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.override.yml up
-```
-
-2. Make changes to your code locally, and they will be automatically detected and the application will rebuild
-
-3. To stop the development environment:
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.override.yml down
-```
-
-### How It Works
-
-The development setup uses:
-- A `docker-compose.override.yml` file that extends the main docker-compose.yml
-- A `Dockerfile.dev` optimized for development
-- The [Air](https://github.com/cosmtrek/air) tool for live reloading
-
-### Troubleshooting
-
-- **Changes not being detected**: Make sure you're using both docker-compose.yml and docker-compose.override.yml files
-- **Build errors**: Check the container logs for compilation errors
-- **Connection issues**: The development setup preserves all the connection settings from the main docker-compose.yml
-- **"air: executable not found"**: This issue has been fixed by using the full path to the air executable (/go/bin/air) in the docker-compose.override.yml file
 
 ## Event examples
 
