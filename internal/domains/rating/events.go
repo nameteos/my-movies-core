@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	MovieRatedEventType   = "rating.movie_rated"
-	MovieUnratedEventType = "rating.movie_unrated"
+	MovieRatedEventType   = "rating_movie_rated"
+	MovieUnratedEventType = "rating_movie_unrated"
 )
 
 type MovieRatedEvent struct {

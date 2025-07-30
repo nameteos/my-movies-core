@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	UserRegisteredEventType = "user.user_registered"
-	UserUpdatedEventType    = "user.user_updated"
-	UserDeletedEventType    = "user.user_deleted"
+	UserRegisteredEventType = "user_user_registered"
+	UserUpdatedEventType    = "user_user_updated"
+	UserDeletedEventType    = "user_user_deleted"
 )
 
 type UserRegisteredEvent struct {

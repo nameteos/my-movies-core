@@ -3,7 +3,7 @@ package watchlist
 import "event-driven-go/internal/shared"
 
 const (
-	MovieAddedToWatchlistEventType = "watchlist.movie_added"
+	MovieAddedToWatchlistEventType = "watchlist_movie_added"
 )
 
 func init() {

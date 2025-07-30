@@ -8,7 +8,7 @@ import (
 
 // Event type constants
 const (
-	MovieWatchedEventType = "library.movie_watched"
+	MovieWatchedEventType = "library_movie_watched"
 )
 
 type MovieWatchedEvent struct {

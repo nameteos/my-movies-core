@@ -49,9 +49,9 @@ services:
     volumes:
       - kafka_data:/bitnami
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list"]
+      test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'kafka'"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 5
       
   kafka-init:

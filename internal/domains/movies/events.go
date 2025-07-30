@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	MovieCreatedEventType = "movies.movie_created"
-	MovieUpdatedEventType = "movies.movie_updated"
-	MovieDeletedEventType = "movies.movie_deleted"
+	MovieCreatedEventType = "movies_movie_created"
+	MovieUpdatedEventType = "movies_movie_updated"
+	MovieDeletedEventType = "movies_movie_deleted"
 )
 
 type MovieCreatedEvent struct {
