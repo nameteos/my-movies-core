@@ -40,7 +40,6 @@ type MongoDBConfig struct {
 type KafkaConfig struct {
 	BootstrapServers string
 	ConsumerGroup    string
-	TopicPrefix      string
 	Enabled          bool
 }
 
@@ -83,7 +82,6 @@ func load() (*config, error) {
 		Kafka: KafkaConfig{
 			BootstrapServers: getEnv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
 			ConsumerGroup:    getEnv("KAFKA_CONSUMER_GROUP", "movieapp"),
-			TopicPrefix:      getEnv("KAFKA_TOPIC_PREFIX", "movieapp"),
 			Enabled:          getEnvAsBool("KAFKA_ENABLED", true),
 		},
 		App: AppConfig{

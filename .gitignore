@@ -13,7 +13,7 @@ main
 *.so
 *.dylib
 
-.idea/
+.idea
 .vscode/
 *.swp
 *.swo
