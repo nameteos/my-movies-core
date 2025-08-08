@@ -12,12 +12,8 @@ const (
 
 type MovieCreatedEvent struct {
 	shared.BaseEvent
-	MovieID     string   `json:"movie_id"`
-	Title       string   `json:"title"`
-	Year        int      `json:"year"`
-	Genre       []string `json:"genre"`
-	Director    []string `json:"director"`
-	Description string   `json:"description"`
+	MovieID string `json:"movie_id"`
+	Title   string `json:"title"`
 }
 
 func init() {
@@ -28,31 +24,19 @@ func init() {
 
 func (e MovieCreatedEvent) GetPayload() interface{} {
 	return struct {
-		MovieID     string   `json:"movie_id"`
-		Title       string   `json:"title"`
-		Year        int      `json:"year"`
-		Genre       []string `json:"genre"`
-		Director    []string `json:"director"`
-		Description string   `json:"description"`
+		MovieID string `json:"movie_id"`
+		Title   string `json:"title"`
 	}{
-		MovieID:     e.MovieID,
-		Title:       e.Title,
-		Year:        e.Year,
-		Genre:       e.Genre,
-		Director:    e.Director,
-		Description: e.Description,
+		MovieID: e.MovieID,
+		Title:   e.Title,
 	}
 }
 
-func NewMovieCreatedEvent(movieID, title, description string, year int, genre, director []string) *MovieCreatedEvent {
+func NewMovieCreatedEvent(movieID string, title string) *MovieCreatedEvent {
 	return &MovieCreatedEvent{
-		BaseEvent:   shared.NewBaseEvent(MovieCreatedEventType),
-		MovieID:     movieID,
-		Title:       title,
-		Year:        year,
-		Genre:       genre,
-		Director:    director,
-		Description: description,
+		BaseEvent: shared.NewBaseEvent(MovieCreatedEventType),
+		MovieID:   movieID,
+		Title:     title,
 	}
 }
 

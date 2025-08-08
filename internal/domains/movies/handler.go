@@ -31,7 +31,7 @@ func (h *Handler) CanHandle(eventType string) bool {
 
 func (h *Handler) handleMovieCreated(ctx context.Context, event *MovieCreatedEvent) error {
 	log.Printf("🎬 MOVIES: New movie '%s' (%d) added to catalog",
-		event.Title, event.Year)
+		event.Title, event.ID)
 
 	// todo index movie
 

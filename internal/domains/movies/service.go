@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"event-driven-go/internal/shared"
+	schema "github.com/nameteos/my-movies-db-schema/mongodb"
 )
 
 type Service struct {
@@ -19,16 +20,13 @@ func NewService(repository Repository, eventBus *shared.EventBus) *Service {
 	}
 }
 
-func (s *Service) CreateMovie(ctx context.Context, movie *Movie) (*Movie, error) {
+func (s *Service) CreateMovie(ctx context.Context, movie *schema.Movie) (*schema.Movie, error) {
 	// Validate input
 	if movie == nil {
 		return nil, fmt.Errorf("movie cannot be nil")
 	}
 	if movie.Title == "" {
 		return nil, fmt.Errorf("movie title cannot be empty")
-	}
-	if movie.Year <= 0 {
-		return nil, fmt.Errorf("movie year must be valid")
 	}
 
 	createdMovie, err := s.repository.CreateMovie(ctx, movie)
@@ -37,12 +35,8 @@ func (s *Service) CreateMovie(ctx context.Context, movie *Movie) (*Movie, error)
 	}
 
 	event := NewMovieCreatedEvent(
-		createdMovie.IDString(),
+		createdMovie.ID.Hex(),
 		createdMovie.Title,
-		createdMovie.Description,
-		createdMovie.Year,
-		createdMovie.Genre,
-		createdMovie.Director,
 	)
 
 	if err := s.eventBus.Publish(ctx, event); err != nil {
@@ -55,7 +49,7 @@ func (s *Service) CreateMovie(ctx context.Context, movie *Movie) (*Movie, error)
 }
 
 // GetMovieByID retrieves a movie by its ID
-func (s *Service) GetMovieByID(ctx context.Context, id string) (*Movie, error) {
+func (s *Service) GetMovieByID(ctx context.Context, id string) (*schema.Movie, error) {
 	if id == "" {
 		return nil, fmt.Errorf("movie ID cannot be empty")
 	}
@@ -64,13 +58,10 @@ func (s *Service) GetMovieByID(ctx context.Context, id string) (*Movie, error) {
 }
 
 // UpdateMovie updates an existing movie and publishes an event
-func (s *Service) UpdateMovie(ctx context.Context, movie *Movie) (*Movie, error) {
+func (s *Service) UpdateMovie(ctx context.Context, movie *schema.Movie) (*schema.Movie, error) {
 	// Validate input
 	if movie == nil {
 		return nil, fmt.Errorf("movie cannot be nil")
-	}
-	if movie.IDString() == "" {
-		return nil, fmt.Errorf("movie ID cannot be empty")
 	}
 
 	updatedMovie, err := s.repository.UpdateMovie(ctx, movie)
@@ -79,7 +70,7 @@ func (s *Service) UpdateMovie(ctx context.Context, movie *Movie) (*Movie, error)
 	}
 
 	// Publish movie updated event
-	event := NewMovieUpdatedEvent(updatedMovie.IDString(), updatedMovie.Title)
+	event := NewMovieUpdatedEvent(updatedMovie.ID.Hex(), updatedMovie.Title)
 
 	if err := s.eventBus.Publish(ctx, event); err != nil {
 		// Log error but don't fail the operation
@@ -118,7 +109,7 @@ func (s *Service) DeleteMovie(ctx context.Context, id string) error {
 }
 
 // SearchMovies searches for movies using various criteria
-func (s *Service) SearchMovies(ctx context.Context, query string, limit, offset int) ([]*Movie, error) {
+func (s *Service) SearchMovies(ctx context.Context, query string, limit, offset int) ([]*schema.Movie, error) {
 	if query == "" {
 		return nil, fmt.Errorf("search query cannot be empty")
 	}
@@ -133,7 +124,7 @@ func (s *Service) SearchMovies(ctx context.Context, query string, limit, offset 
 }
 
 // GetMoviesByGenre retrieves movies by genre
-func (s *Service) GetMoviesByGenre(ctx context.Context, genre string, limit, offset int) ([]*Movie, error) {
+func (s *Service) GetMoviesByGenre(ctx context.Context, genre string, limit, offset int) ([]*schema.Movie, error) {
 	if genre == "" {
 		return nil, fmt.Errorf("genre cannot be empty")
 	}
@@ -148,7 +139,7 @@ func (s *Service) GetMoviesByGenre(ctx context.Context, genre string, limit, off
 }
 
 // GetMoviesByYear retrieves movies by year
-func (s *Service) GetMoviesByYear(ctx context.Context, year int, limit, offset int) ([]*Movie, error) {
+func (s *Service) GetMoviesByYear(ctx context.Context, year int, limit, offset int) ([]*schema.Movie, error) {
 	if year <= 0 {
 		return nil, fmt.Errorf("year must be valid")
 	}
@@ -163,7 +154,7 @@ func (s *Service) GetMoviesByYear(ctx context.Context, year int, limit, offset i
 }
 
 // GetMoviesByDirector retrieves movies by director
-func (s *Service) GetMoviesByDirector(ctx context.Context, director string, limit, offset int) ([]*Movie, error) {
+func (s *Service) GetMoviesByDirector(ctx context.Context, director string, limit, offset int) ([]*schema.Movie, error) {
 	if director == "" {
 		return nil, fmt.Errorf("director cannot be empty")
 	}
@@ -178,7 +169,7 @@ func (s *Service) GetMoviesByDirector(ctx context.Context, director string, limi
 }
 
 // GetRecentMovies retrieves recently added movies
-func (s *Service) GetRecentMovies(ctx context.Context, limit, offset int) ([]*Movie, error) {
+func (s *Service) GetRecentMovies(ctx context.Context, limit, offset int) ([]*schema.Movie, error) {
 	if limit <= 0 {
 		limit = 10
 	}

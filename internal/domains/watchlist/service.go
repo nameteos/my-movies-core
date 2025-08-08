@@ -3,10 +3,9 @@ package watchlist
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"event-driven-go/internal/domains/movies"
 	"event-driven-go/internal/shared"
+	schema "github.com/nameteos/my-movies-db-schema/mongodb"
 )
 
 type Service struct {
@@ -19,7 +18,7 @@ func NewService(eventBus *shared.EventBus) *Service {
 	}
 }
 
-func (s *Service) AddMovie(ctx context.Context, userID string, movie *movies.Movie) error {
+func (s *Service) AddMovie(ctx context.Context, userID string, movie *schema.Movie) error {
 	// Validate input
 	if userID == "" {
 		return fmt.Errorf("user ID cannot be empty")
@@ -30,15 +29,12 @@ func (s *Service) AddMovie(ctx context.Context, userID string, movie *movies.Mov
 
 	// todo logic
 
-	movieID := movie.IDString()              // Convert ObjectID to string
-	genre := strings.Join(movie.Genre, ", ") // Convert []string to single string for event
+	movieID := movie.ID.Hex() // Convert ObjectID to string
 
 	event := NewMovieAddedToWatchlistEvent(
 		userID,
 		movieID,
 		movie.Title,
-		genre,
-		movie.Year,
 	)
 
 	if err := s.eventBus.Publish(ctx, event); err != nil {

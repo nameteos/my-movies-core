@@ -3,6 +3,7 @@ package movies
 import (
 	"context"
 	"fmt"
+	schema "github.com/nameteos/my-movies-db-schema/mongodb"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,28 +13,37 @@ import (
 )
 
 type Repository interface {
-	CreateMovie(ctx context.Context, movie *Movie) (*Movie, error)
-	GetMovieByID(ctx context.Context, id string) (*Movie, error)
-	UpdateMovie(ctx context.Context, movie *Movie) (*Movie, error)
+	CreateMovie(ctx context.Context, movie *schema.Movie) (*schema.Movie, error)
+	GetMovieByID(ctx context.Context, id string) (*schema.Movie, error)
+	UpdateMovie(ctx context.Context, movie *schema.Movie) (*schema.Movie, error)
 	DeleteMovie(ctx context.Context, id string) error
-	SearchMovies(ctx context.Context, query string, limit, offset int) ([]*Movie, error)
-	GetMoviesByGenre(ctx context.Context, genre string, limit, offset int) ([]*Movie, error)
-	GetMoviesByYear(ctx context.Context, year int, limit, offset int) ([]*Movie, error)
-	GetMoviesByDirector(ctx context.Context, director string, limit, offset int) ([]*Movie, error)
-	GetRecentMovies(ctx context.Context, limit, offset int) ([]*Movie, error)
+	SearchMovies(ctx context.Context, query string, limit, offset int) ([]*schema.Movie, error)
+	GetMoviesByGenre(ctx context.Context, genre string, limit, offset int) ([]*schema.Movie, error)
+	GetMoviesByYear(ctx context.Context, year int, limit, offset int) ([]*schema.Movie, error)
+	GetMoviesByDirector(ctx context.Context, director string, limit, offset int) ([]*schema.Movie, error)
+	GetRecentMovies(ctx context.Context, limit, offset int) ([]*schema.Movie, error)
 }
 
 type MongoRepository struct {
 	collection *mongo.Collection
+	indexer    *schema.MongoIndexer
+}
+
+func NewMongoIndexer(db *mongo.Database) *schema.MongoIndexer {
+	return &schema.MongoIndexer{
+		Collection:       db.Collection("movies"),
+		VectorDimensions: 1536,
+	}
 }
 
 func NewMongoRepository(db *mongo.Database) *MongoRepository {
 	return &MongoRepository{
 		collection: db.Collection("movies"),
+		indexer:    NewMongoIndexer(db),
 	}
 }
 
-func (r *MongoRepository) CreateMovie(ctx context.Context, movie *Movie) (*Movie, error) {
+func (r *MongoRepository) CreateMovie(ctx context.Context, movie *schema.Movie) (*schema.Movie, error) {
 	movie.CreatedAt = time.Now()
 	movie.UpdatedAt = time.Now()
 
@@ -49,13 +59,13 @@ func (r *MongoRepository) CreateMovie(ctx context.Context, movie *Movie) (*Movie
 	return movie, nil
 }
 
-func (r *MongoRepository) GetMovieByID(ctx context.Context, id string) (*Movie, error) {
+func (r *MongoRepository) GetMovieByID(ctx context.Context, id string) (*schema.Movie, error) {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid movie ID: %w", err)
 	}
 
-	var movie Movie
+	var movie schema.Movie
 	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&movie)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -67,7 +77,7 @@ func (r *MongoRepository) GetMovieByID(ctx context.Context, id string) (*Movie, 
 	return &movie, nil
 }
 
-func (r *MongoRepository) UpdateMovie(ctx context.Context, movie *Movie) (*Movie, error) {
+func (r *MongoRepository) UpdateMovie(ctx context.Context, movie *schema.Movie) (*schema.Movie, error) {
 	movie.UpdatedAt = time.Now()
 
 	filter := bson.M{"_id": movie.ID}
@@ -80,7 +90,7 @@ func (r *MongoRepository) UpdateMovie(ctx context.Context, movie *Movie) (*Movie
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
 
-	var updatedMovie Movie
+	var updatedMovie schema.Movie
 	if err := result.Decode(&updatedMovie); err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("movie not found")
@@ -109,7 +119,7 @@ func (r *MongoRepository) DeleteMovie(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *MongoRepository) SearchMovies(ctx context.Context, query string, limit, offset int) ([]*Movie, error) {
+func (r *MongoRepository) SearchMovies(ctx context.Context, query string, limit, offset int) ([]*schema.Movie, error) {
 	// Create text search filter
 	filter := bson.M{
 		"$text": bson.M{
@@ -129,9 +139,9 @@ func (r *MongoRepository) SearchMovies(ctx context.Context, query string, limit,
 	}
 	defer cursor.Close(ctx)
 
-	var movies []*Movie
+	var movies []*schema.Movie
 	for cursor.Next(ctx) {
-		var movie Movie
+		var movie schema.Movie
 		if err := cursor.Decode(&movie); err != nil {
 			return nil, fmt.Errorf("failed to decode movie: %w", err)
 		}
@@ -146,22 +156,22 @@ func (r *MongoRepository) SearchMovies(ctx context.Context, query string, limit,
 }
 
 // todo use cursor
-func (r *MongoRepository) GetMoviesByGenre(ctx context.Context, genre string, limit, offset int) ([]*Movie, error) {
+func (r *MongoRepository) GetMoviesByGenre(ctx context.Context, genre string, limit, offset int) ([]*schema.Movie, error) {
 	filter := bson.M{"genre": genre}
 	return r.findMoviesWithFilter(ctx, filter, limit, offset)
 }
 
-func (r *MongoRepository) GetMoviesByYear(ctx context.Context, year int, limit, offset int) ([]*Movie, error) {
+func (r *MongoRepository) GetMoviesByYear(ctx context.Context, year int, limit, offset int) ([]*schema.Movie, error) {
 	filter := bson.M{"year": year}
 	return r.findMoviesWithFilter(ctx, filter, limit, offset)
 }
 
-func (r *MongoRepository) GetMoviesByDirector(ctx context.Context, director string, limit, offset int) ([]*Movie, error) {
+func (r *MongoRepository) GetMoviesByDirector(ctx context.Context, director string, limit, offset int) ([]*schema.Movie, error) {
 	filter := bson.M{"director": director}
 	return r.findMoviesWithFilter(ctx, filter, limit, offset)
 }
 
-func (r *MongoRepository) GetRecentMovies(ctx context.Context, limit, offset int) ([]*Movie, error) {
+func (r *MongoRepository) GetRecentMovies(ctx context.Context, limit, offset int) ([]*schema.Movie, error) {
 	opts := options.Find().
 		SetLimit(int64(limit)).
 		SetSkip(int64(offset)).
@@ -173,9 +183,9 @@ func (r *MongoRepository) GetRecentMovies(ctx context.Context, limit, offset int
 	}
 	defer cursor.Close(ctx)
 
-	var movies []*Movie
+	var movies []*schema.Movie
 	for cursor.Next(ctx) {
-		var movie Movie
+		var movie schema.Movie
 		if err := cursor.Decode(&movie); err != nil {
 			return nil, fmt.Errorf("failed to decode movie: %w", err)
 		}
@@ -189,7 +199,7 @@ func (r *MongoRepository) GetRecentMovies(ctx context.Context, limit, offset int
 	return movies, nil
 }
 
-func (r *MongoRepository) findMoviesWithFilter(ctx context.Context, filter bson.M, limit, offset int) ([]*Movie, error) {
+func (r *MongoRepository) findMoviesWithFilter(ctx context.Context, filter bson.M, limit, offset int) ([]*schema.Movie, error) {
 	opts := options.Find().
 		SetLimit(int64(limit)).
 		SetSkip(int64(offset)).
@@ -201,9 +211,9 @@ func (r *MongoRepository) findMoviesWithFilter(ctx context.Context, filter bson.
 	}
 	defer cursor.Close(ctx)
 
-	var movies []*Movie
+	var movies []*schema.Movie
 	for cursor.Next(ctx) {
-		var movie Movie
+		var movie schema.Movie
 		if err := cursor.Decode(&movie); err != nil {
 			return nil, fmt.Errorf("failed to decode movie: %w", err)
 		}
@@ -218,47 +228,8 @@ func (r *MongoRepository) findMoviesWithFilter(ctx context.Context, filter bson.
 }
 
 func (r *MongoRepository) CreateIndexes(ctx context.Context) error {
-	indexes := []mongo.IndexModel{
-		// Text index for search
-		{
-			Keys: bson.D{
-				{Key: "title", Value: "text"},
-				{Key: "description", Value: "text"},
-				{Key: "cast.name", Value: "text"},
-				{Key: "crew.name", Value: "text"},
-			},
-		},
-		// Compound index for genre and year
-		{
-			Keys: bson.D{
-				{Key: "genre", Value: 1},
-				{Key: "year", Value: -1},
-			},
-		},
-		// Index for director queries
-		{
-			Keys: bson.D{
-				{Key: "director", Value: 1},
-			},
-		},
-		// Index for year queries
-		{
-			Keys: bson.D{
-				{Key: "year", Value: -1},
-			},
-		},
-		// Index for recently added movies
-		{
-			Keys: bson.D{
-				{Key: "created_at", Value: -1},
-			},
-		},
-	}
-
-	_, err := r.collection.Indexes().CreateMany(ctx, indexes)
-	if err != nil {
+	if _, err := r.indexer.CreateIndexes(ctx); err != nil {
 		return fmt.Errorf("failed to create indexes: %w", err)
 	}
-
 	return nil
 }

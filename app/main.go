@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	schema "github.com/nameteos/my-movies-db-schema/mongodb"
 	"log"
 	"os"
 	"os/signal"
@@ -130,37 +131,19 @@ func demonstrateGormFeatures(
 	logger.Println("=====================================")
 
 	// Create sample movies
-	sampleMovies := []*movies.Movie{
+	sampleMovies := []*schema.Movie{
 		{
-			ID:          primitive.NewObjectID(),
-			Title:       "The Shawshank Redemption",
-			Genre:       []string{"Drama"},
-			Year:        1994,
-			Director:    []string{"Frank Darabont"},
-			Description: "Two imprisoned men bond over years, finding solace and redemption through common decency.",
-			Duration:    142,
-			Cast: []movies.CastMember{
-				{Name: "Tim Robbins", Character: "Andy Dufresne", Order: 1},
-				{Name: "Morgan Freeman", Character: "Ellis Redding", Order: 2},
-			},
+			ID:    primitive.NewObjectID(),
+			Title: "The Shawshank Redemption",
 		},
 		{
-			ID:          primitive.NewObjectID(),
-			Title:       "The Godfather",
-			Genre:       []string{"Crime", "Drama"},
-			Year:        1972,
-			Director:    []string{"Francis Ford Coppola"},
-			Description: "The aging patriarch of a crime dynasty transfers control to his reluctant son.",
-			Duration:    175,
-			Cast: []movies.CastMember{
-				{Name: "Marlon Brando", Character: "Don Vito Corleone", Order: 1},
-				{Name: "Al Pacino", Character: "Michael Corleone", Order: 2},
-			},
+			ID:    primitive.NewObjectID(),
+			Title: "The Godfather",
 		},
 	}
 
 	// Store movies in MongoDB
-	var createdMovies []*movies.Movie
+	var createdMovies []*schema.Movie
 	for _, movie := range sampleMovies {
 		created, err := movieRepo.CreateMovie(ctx, movie)
 		if err != nil {
@@ -168,7 +151,7 @@ func demonstrateGormFeatures(
 			continue
 		}
 		createdMovies = append(createdMovies, created)
-		logger.Printf("📽️  Created: %s (%d)", created.Title, created.Year)
+		logger.Printf("📽️  Created: %s (%d)", created.Title, created.ReleaseDate)
 	}
 
 	logger.Println("\n📋 PHASE 3: GORM Watchlist Operations")
@@ -177,7 +160,7 @@ func demonstrateGormFeatures(
 	// Add movies to user's watchlist
 	for i, movie := range createdMovies {
 		notes := fmt.Sprintf("Must watch #%d - heard amazing things!", i+1)
-		_, err := watchlistRepo.AddToWatchlist(ctx, user1.ID, movie.IDString(), notes)
+		_, err := watchlistRepo.AddToWatchlist(ctx, user1.ID, movie.ID.Hex(), notes)
 		if err != nil {
 			logger.Printf("❌ Failed to add %s to watchlist: %v", movie.Title, err)
 			continue
@@ -199,7 +182,7 @@ func demonstrateGormFeatures(
 	// Mark movies as watched
 	for i, movie := range createdMovies {
 		watchedAt := time.Now().Add(-time.Duration(i+1) * 24 * time.Hour)
-		_, err := libraryRepo.AddWatchHistory(ctx, user1.ID, movie.IDString(), watchedAt, movie.Duration)
+		_, err := libraryRepo.AddWatchHistory(ctx, user1.ID, movie.ID.Hex(), watchedAt, movie.Runtime)
 		if err != nil {
 			logger.Printf("❌ Failed to add watch history for %s: %v", movie.Title, err)
 			continue
@@ -221,7 +204,7 @@ func demonstrateGormFeatures(
 
 	// Rate the watched movies
 	ratings := []struct {
-		movie  *movies.Movie
+		movie  *schema.Movie
 		rating float64
 		review string
 	}{
@@ -230,7 +213,7 @@ func demonstrateGormFeatures(
 	}
 
 	for _, r := range ratings {
-		movieRating, err := ratingRepo.UpsertRating(ctx, user1.ID, r.movie.IDString(), r.rating, r.review)
+		movieRating, err := ratingRepo.UpsertRating(ctx, user1.ID, r.movie.ID.Hex(), r.rating, r.review)
 		if err != nil {
 			logger.Printf("❌ Failed to rate %s: %v", r.movie.Title, err)
 			continue

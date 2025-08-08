@@ -6,6 +6,7 @@ tmp
 
 .git
 
+vendor
 main
 *.exe
 *.exe~
